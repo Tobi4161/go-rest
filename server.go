@@ -123,28 +123,28 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
+	// "net"
 	"net/http"
 	"net/url"
-	"os"
-	"reflect"
-	"strconv"
-	"strings"
+    // "os"
+    "reflect"
+    "strconv"
+    "strings"
 )
 
 var (
-	// IndentJSON is the string with which JSON output will be indented.
-	IndentJSON string
+    // IndentJSON is the string with which JSON output will be indented.
+    IndentJSON string
 
-	// Log is a function pointer compatible to fmt.Println or log.Println.
-	// The default value is log.Println.
-	Log = log.Println
+    // Log is a function pointer compatible to fmt.Println or log.Println.
+    // The default value is log.Println.
+    Log = log.Println
 
-	// DontCheckRequestMethod disables checking for the correct
-	// request method for a handler, which would result in a
-	// 405 error if not correct.
-	// Handy for testing POST handler via hand crafted GET requests.
-	DontCheckRequestMethod bool
+    // DontCheckRequestMethod disables checking for the correct
+    // request method for a handler, which would result in a
+    // 405 error if not correct.
+    // Handy for testing POST handler via hand crafted GET requests.
+    DontCheckRequestMethod bool
 )
 
 /*
@@ -165,33 +165,33 @@ object is the address of an object with such a method.
 
 Format of GET handler:
 
-	func([url.Values]) ([struct|*struct|string][, error]) {}
+func([url.Values]) ([struct|*struct|string][, error]) {}
 
 */
 func HandleGET(path string, handler interface{}, object ...interface{}) {
-	handlerFunc, in, out := getHandlerFunc(handler, object)
-	httpHandler := &httpHandler{
-		method:      "GET",
-		handlerFunc: handlerFunc,
-	}
-	// Check handler arguments and install getter
-	switch len(in) {
-	case 0:
-		httpHandler.getArgs = func(request *http.Request) []reflect.Value {
-			return nil
-		}
-	case 1:
-		if in[0] != reflect.TypeOf(url.Values(nil)) {
-			panic(fmt.Errorf("HandleGET(): handler argument must be url.Values, got %s", in[0]))
-		}
-		httpHandler.getArgs = func(request *http.Request) []reflect.Value {
-			return []reflect.Value{reflect.ValueOf(request.URL.Query())}
-		}
-	default:
-		panic(fmt.Errorf("HandleGET(): handler accepts zero or one arguments, got %d", len(in)))
-	}
-	httpHandler.writeResult = writeResultFunc(out)
-	http.Handle(path, httpHandler)
+    handlerFunc, in, out := getHandlerFunc(handler, object)
+    httpHandler := &httpHandler{
+        method:      "GET",
+        handlerFunc: handlerFunc,
+    }
+    // Check handler arguments and install getter
+    switch len(in) {
+    case 0:
+        httpHandler.getArgs = func(request *http.Request) []reflect.Value {
+            return nil
+        }
+    case 1:
+        if in[0] != reflect.TypeOf(url.Values(nil)) {
+            panic(fmt.Errorf("HandleGET(): handler argument must be url.Values, got %s", in[0]))
+        }
+        httpHandler.getArgs = func(request *http.Request) []reflect.Value {
+            return []reflect.Value{reflect.ValueOf(request.URL.Query())}
+        }
+    default:
+        panic(fmt.Errorf("HandleGET(): handler accepts zero or one arguments, got %d", len(in)))
+    }
+    httpHandler.writeResult = writeResultFunc(out)
+    http.Handle(path, httpHandler)
 }
 
 /*
@@ -230,135 +230,135 @@ object is the address of an object with such a method.
 
 Format of POST handler:
 
-	func([*struct|url.Values]) ([struct|*struct|string][, error]) {}
+func([*struct|url.Values]) ([struct|*struct|string][, error]) {}
 
 */
 func HandlePOST(path string, handler interface{}, object ...interface{}) {
-	handlerFunc, in, out := getHandlerFunc(handler, object)
-	httpHandler := &httpHandler{
-		method:      "POST",
-		handlerFunc: handlerFunc,
-	}
-	// Check handler arguments and install getter
-	switch len(in) {
-	case 1:
-		a := in[0]
-		if a != urlValuesType && (a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct) && a.Kind() != reflect.String {
-			panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer, string, or url.Values. Got %s", a))
-		}
-		httpHandler.getArgs = func(request *http.Request) []reflect.Value {
-			ct := request.Header.Get("Content-Type")
-			switch ct {
-			case "", "application/x-www-form-urlencoded":
-				request.ParseForm()
-				if a == urlValuesType {
-					return []reflect.Value{reflect.ValueOf(request.Form)}
-				}
-				s := reflect.New(a.Elem())
-				if len(request.Form) == 1 && request.Form.Get("JSON") != "" {
-					err := json.Unmarshal([]byte(request.Form.Get("JSON")), s.Interface())
-					if err != nil {
-						panic(err)
-					}
-				} else {
-					v := s.Elem()
-					for key, value := range request.Form {
-						if f := v.FieldByName(key); f.IsValid() && f.CanSet() {
-							switch f.Kind() {
-							case reflect.String:
-								f.SetString(value[0])
-							case reflect.Bool:
-								if val, err := strconv.ParseBool(value[0]); err == nil {
-									f.SetBool(val)
-								}
-							case reflect.Float32, reflect.Float64:
-								if val, err := strconv.ParseFloat(value[0], 64); err == nil {
-									f.SetFloat(val)
-								}
-							case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-								if val, err := strconv.ParseInt(value[0], 0, 64); err == nil {
-									f.SetInt(val)
-								}
-							case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-								if val, err := strconv.ParseUint(value[0], 0, 64); err == nil {
-									f.SetUint(val)
-								}
-							}
-						}
-					}
-				}
-				return []reflect.Value{s}
+    handlerFunc, in, out := getHandlerFunc(handler, object)
+    httpHandler := &httpHandler{
+        method:      "POST",
+        handlerFunc: handlerFunc,
+    }
+    // Check handler arguments and install getter
+    switch len(in) {
+    case 1:
+        a := in[0]
+        if a != urlValuesType && (a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct) && a.Kind() != reflect.String {
+            panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer, string, or url.Values. Got %s", a))
+        }
+        httpHandler.getArgs = func(request *http.Request) []reflect.Value {
+            ct := request.Header.Get("Content-Type")
+            switch ct {
+            case "", "application/x-www-form-urlencoded":
+                request.ParseForm()
+                if a == urlValuesType {
+                    return []reflect.Value{reflect.ValueOf(request.Form)}
+                }
+                s := reflect.New(a.Elem())
+                if len(request.Form) == 1 && request.Form.Get("JSON") != "" {
+                    err := json.Unmarshal([]byte(request.Form.Get("JSON")), s.Interface())
+                    if err != nil {
+                        panic(err)
+                    }
+                } else {
+                    v := s.Elem()
+                    for key, value := range request.Form {
+                        if f := v.FieldByName(key); f.IsValid() && f.CanSet() {
+                            switch f.Kind() {
+                            case reflect.String:
+                                f.SetString(value[0])
+                            case reflect.Bool:
+                                if val, err := strconv.ParseBool(value[0]); err == nil {
+                                    f.SetBool(val)
+                                }
+                            case reflect.Float32, reflect.Float64:
+                                if val, err := strconv.ParseFloat(value[0], 64); err == nil {
+                                    f.SetFloat(val)
+                                }
+                            case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+                                if val, err := strconv.ParseInt(value[0], 0, 64); err == nil {
+                                    f.SetInt(val)
+                                }
+                            case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+                                if val, err := strconv.ParseUint(value[0], 0, 64); err == nil {
+                                    f.SetUint(val)
+                                }
+                            }
+                        }
+                    }
+                }
+                return []reflect.Value{s}
 
-			case "text/plain":
-				if a.Kind() != reflect.String {
-					panic(fmt.Errorf("HandlePOST(): first handler argument must be a string when request Content-Type is text/plain, got %s", a))
-				}
-				defer request.Body.Close()
-				body, err := ioutil.ReadAll(request.Body)
-				if err != nil {
-					panic(err)
-				}
-				return []reflect.Value{reflect.ValueOf(string(body))}
+            case "text/plain":
+                if a.Kind() != reflect.String {
+                    panic(fmt.Errorf("HandlePOST(): first handler argument must be a string when request Content-Type is text/plain, got %s", a))
+                }
+                defer request.Body.Close()
+                body, err := ioutil.ReadAll(request.Body)
+                if err != nil {
+                    panic(err)
+                }
+                return []reflect.Value{reflect.ValueOf(string(body))}
 
-			case "application/xml":
-				if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
-					panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is application/xml, got %s", a))
-				}
-				s := reflect.New(a.Elem())
-				defer request.Body.Close()
-				body, err := ioutil.ReadAll(request.Body)
-				if err != nil {
-					panic(err)
-				}
-				err = xml.Unmarshal(body, s.Interface())
-				if err != nil {
-					panic(err)
-				}
-				return []reflect.Value{s}
+            case "application/xml":
+                if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
+                    panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is application/xml, got %s", a))
+                }
+                s := reflect.New(a.Elem())
+                defer request.Body.Close()
+                body, err := ioutil.ReadAll(request.Body)
+                if err != nil {
+                    panic(err)
+                }
+                err = xml.Unmarshal(body, s.Interface())
+                if err != nil {
+                    panic(err)
+                }
+                return []reflect.Value{s}
 
-			case "application/json":
-				if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
-					panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is application/json, got %s", a))
-				}
-				s := reflect.New(a.Elem())
-				defer request.Body.Close()
-				body, err := ioutil.ReadAll(request.Body)
-				if err != nil {
-					panic(err)
-				}
-				err = json.Unmarshal(body, s.Interface())
-				if err != nil {
-					panic(err)
-				}
-				return []reflect.Value{s}
+            case "application/json":
+                if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
+                    panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is application/json, got %s", a))
+                }
+                s := reflect.New(a.Elem())
+                defer request.Body.Close()
+                body, err := ioutil.ReadAll(request.Body)
+                if err != nil {
+                    panic(err)
+                }
+                err = json.Unmarshal(body, s.Interface())
+                if err != nil {
+                    panic(err)
+                }
+                return []reflect.Value{s}
 
-			case "multipart/form-data":
-				if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
-					panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is multipart/form-data, got %s", a))
-				}
-				file, _, err := request.FormFile("JSON")
-				if err != nil {
-					panic(err)
-				}
-				s := reflect.New(a.Elem())
-				defer file.Close()
-				body, err := ioutil.ReadAll(request.Body)
-				if err != nil {
-					panic(err)
-				}
-				err = json.Unmarshal(body, s.Interface())
-				if err != nil {
-					panic(err)
-				}
-				return []reflect.Value{s}
-			}
-			panic("Unsupported POST Content-Type: " + ct)
-		}
-	default:
-		panic(fmt.Errorf("HandlePOST(): handler accepts only one or thwo arguments, got %d", len(in)))
-	}
-	httpHandler.writeResult = writeResultFunc(out)
-	http.Handle(path, httpHandler)
+            case "multipart/form-data":
+                if a.Kind() != reflect.Ptr || a.Elem().Kind() != reflect.Struct {
+                    panic(fmt.Errorf("HandlePOST(): first handler argument must be a struct pointer when request Content-Type is multipart/form-data, got %s", a))
+                }
+                file, _, err := request.FormFile("JSON")
+                if err != nil {
+                    panic(err)
+                }
+                s := reflect.New(a.Elem())
+                defer file.Close()
+                body, err := ioutil.ReadAll(request.Body)
+                if err != nil {
+                    panic(err)
+                }
+                err = json.Unmarshal(body, s.Interface())
+                if err != nil {
+                    panic(err)
+                }
+                return []reflect.Value{s}
+            }
+            panic("Unsupported POST Content-Type: " + ct)
+        }
+    default:
+        panic(fmt.Errorf("HandlePOST(): handler accepts only one or thwo arguments, got %d", len(in)))
+    }
+    httpHandler.writeResult = writeResultFunc(out)
+    http.Handle(path, httpHandler)
 }
 
 /*
@@ -367,24 +367,26 @@ with the registered GET and POST handlers.
 If stop is non nil then a send on the channel
 will gracefully stop the server.
 */
-func RunServer(addr string, stop chan struct{}) {
-	server := &http.Server{Addr: addr}
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		panic(err)
-	}
-	if stop != nil {
-		go func() {
-			<-stop
-			err := listener.Close()
-			if err != nil {
-				os.Stderr.WriteString(err.Error())
-			}
-			return
-		}()
-	}
-	Log("Server listening at", addr)
-	err = server.Serve(listener)
+func RunServer(addr, certFile, keyFile string) {
+    server := &http.Server{Addr: addr}
+    // listener, err := net.Listen("tcp", addr)
+    // if err != nil {
+    // 	panic(err)
+    // }
+    // if stop != nil {
+    // 	go func() {
+    // 		<-stop
+    // 		err := listener.Close()
+    // 		if err != nil {
+    // 			os.Stderr.WriteString(err.Error())
+    // 		}
+    // 		return
+    // 	}()
+    // }
+    Log("Server listening at", addr)
+    // err = server.Serve(listener)
+    err := server.ListenAndServeTLS(certFile, keyFile)
+
 	// I know, that's a ugly and depending on undocumented behavior.
 	// But when the implementation changes, we'll see it immediately as panic.
 	// To the keepers of the Go standard libraries:
